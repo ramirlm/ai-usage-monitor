@@ -16,7 +16,9 @@ NC='\033[0m' # No Color
 
 # Load .env file if it exists
 if [ -f "$(dirname "$0")/.env" ]; then
-    export $(grep -v '^#' "$(dirname "$0")/.env" | xargs)
+    set -a
+    source "$(dirname "$0")/.env"
+    set +a
 fi
 
 # Function to print header
@@ -31,15 +33,15 @@ print_header() {
 
 # Function to print table border
 print_table_border() {
-    echo "╭────────────────────────┬──────────────────┬─────────────────────────────────────────╮"
+    echo "╭────────────────────────┬────────────────────────────┬─────────────────────────────────────────╮"
 }
 
 print_table_separator() {
-    echo "├────────────────────────┼──────────────────┼─────────────────────────────────────────┤"
+    echo "├────────────────────────┼────────────────────────────┼─────────────────────────────────────────┤"
 }
 
 print_table_bottom() {
-    echo "╰────────────────────────┴──────────────────┴─────────────────────────────────────────╯"
+    echo "╰────────────────────────┴────────────────────────────┴─────────────────────────────────────────╯"
 }
 
 # Function to check Anthropic (Claude) service
@@ -56,9 +58,9 @@ check_anthropic() {
         details="Valid key configured\nCheck usage at console.anthropic.com"
     fi
     
-    printf "│ %-22s │ %-28s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
+    printf "│ %-22s │ %-40s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
     if [ ! -z "$ANTHROPIC_API_KEY" ]; then
-        printf "│ %-22s │ %-28s │ %-50s │\n" "" "" "Check usage at console.anthropic.com"
+        printf "│ %-22s │ %-40s │ %-50s │\n" "" "" "Check usage at console.anthropic.com"
     fi
 }
 
@@ -76,9 +78,9 @@ check_openai() {
         details="Valid key configured\nCheck usage at platform.openai.com/usage"
     fi
     
-    printf "│ %-22s │ %-28s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
+    printf "│ %-22s │ %-40s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
     if [ ! -z "$OPENAI_API_KEY" ]; then
-        printf "│ %-22s │ %-28s │ %-50s │\n" "" "" "Check usage at platform.openai.com/usage"
+        printf "│ %-22s │ %-40s │ %-50s │\n" "" "" "Check usage at platform.openai.com/usage"
     fi
 }
 
@@ -168,7 +170,7 @@ main() {
     # Display table
     echo -e "${BOLD}${MAGENTA}                    AI Service Status                              ${NC}"
     print_table_border
-    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-16s${NC} │ ${YELLOW}%-39s${NC} │\n" "Service" "Status" "Details"
+    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-26s${NC} │ ${YELLOW}%-39s${NC} │\n" "Service" "Status" "Details"
     print_table_separator
     check_anthropic
     print_table_separator
