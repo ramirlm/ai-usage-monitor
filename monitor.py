@@ -5,7 +5,6 @@ A CLI tool to monitor usage of various AI services including Claude, OpenAI (Cod
 """
 
 import os
-import sys
 import argparse
 from datetime import datetime
 from dotenv import load_dotenv
@@ -46,7 +45,7 @@ class AIUsageMonitor:
             return {
                 'service': 'Claude (Anthropic)',
                 'status': 'Configured',
-                'key_prefix': self.anthropic_key[:10] + '...',
+                'key_status': 'Valid key configured',
                 'note': 'Check usage at console.anthropic.com'
             }
         except Exception as e:
@@ -74,7 +73,7 @@ class AIUsageMonitor:
             return {
                 'service': 'OpenAI (Codex/Copilot)',
                 'status': 'Configured',
-                'key_prefix': self.openai_key[:10] + '...',
+                'key_status': 'Valid key configured',
                 'note': 'Check usage at platform.openai.com/usage'
             }
         except Exception as e:
@@ -119,8 +118,8 @@ class AIUsageMonitor:
             
             # Build details
             details = []
-            if 'key_prefix' in service:
-                details.append(f"Key: {service['key_prefix']}")
+            if 'key_status' in service:
+                details.append(service['key_status'])
             if 'note' in service:
                 details.append(service['note'])
             if 'error' in service:
