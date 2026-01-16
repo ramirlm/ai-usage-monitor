@@ -1,6 +1,6 @@
 # AI Usage Monitor
 
-A lightweight bash CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), and more.
+A lightweight bash CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), Synthetic, and more.
 
 ## Features
 
@@ -9,11 +9,13 @@ A lightweight bash CLI tool to monitor usage of various AI services including Cl
 - 📊 Beautiful terminal output with status indicators
 - ⚡ Quick status check of all configured services
 - 🪶 Pure bash - no dependencies required!
+- 🌐 Real-time API quota checking for Synthetic
 
 ## Supported Services
 
 - **Claude (Anthropic)** - Advanced AI assistant
 - **OpenAI** - Codex, Copilot, and GPT models
+- **Synthetic** - AI service with real-time quota monitoring via API
 - More services can be added easily!
 
 ## Installation
@@ -39,6 +41,7 @@ Or export them directly:
 ```bash
 export ANTHROPIC_API_KEY="your-anthropic-key"
 export OPENAI_API_KEY="your-openai-key"
+export SYNTHETIC_API_KEY="your-synthetic-key"
 ```
 
 ## Usage
@@ -80,6 +83,7 @@ The tool displays a beautiful table showing:
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key for Claude |
 | `OPENAI_API_KEY` | Your OpenAI API key for Codex/Copilot/GPT |
+| `SYNTHETIC_API_KEY` | Your Synthetic API key (uses api.synthetic.new/v2/quotas) |
 
 ## Development
 
@@ -92,7 +96,8 @@ To add support for additional AI services:
 ## Requirements
 
 - Bash 4.0 or higher
-- No external dependencies!
+- `curl` for API requests (standard on most systems)
+- `jq` (optional) - for prettier quota display from Synthetic API
 
 ## License
 

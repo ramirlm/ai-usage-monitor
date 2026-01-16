@@ -84,6 +84,54 @@ check_openai() {
     fi
 }
 
+# Function to check Synthetic service
+check_synthetic() {
+    local service="Synthetic"
+    local status=""
+    local details=""
+    
+    if [ -z "$SYNTHETIC_API_KEY" ]; then
+        status="${YELLOW}⚠ Not configured${NC}"
+        details="Error: SYNTHETIC_API_KEY not set"
+    else
+        # Try to fetch quota information from the API
+        local response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $SYNTHETIC_API_KEY" "https://api.synthetic.new/v2/quotas" 2>/dev/null)
+        local http_code=$(echo "$response" | tail -n1)
+        local body=$(echo "$response" | sed '$d')
+        
+        if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+            status="${GREEN}✓ Configured${NC}"
+            # Try to extract quota info if available
+            if command -v jq &> /dev/null && [ ! -z "$body" ]; then
+                local quota_info=$(echo "$body" | jq -r 'if .quota then "Quota: \(.quota)" else "Valid key configured" end' 2>/dev/null)
+                if [ ! -z "$quota_info" ]; then
+                    details="$quota_info\nAPI: api.synthetic.new/v2/quotas"
+                else
+                    details="Valid key configured\nAPI: api.synthetic.new/v2/quotas"
+                fi
+            else
+                details="Valid key configured\nAPI: api.synthetic.new/v2/quotas"
+            fi
+        elif [ "$http_code" = "401" ] || [ "$http_code" = "403" ]; then
+            status="${RED}✗ Error${NC}"
+            details="Authentication failed (HTTP $http_code)"
+        elif [ -z "$http_code" ]; then
+            status="${YELLOW}⚠ Warning${NC}"
+            details="Could not connect to API\nAPI: api.synthetic.new/v2/quotas"
+        else
+            status="${YELLOW}⚠ Warning${NC}"
+            details="API returned HTTP $http_code\nAPI: api.synthetic.new/v2/quotas"
+        fi
+    fi
+    
+    printf "│ %-22s │ %-40s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
+    # Print second line if available
+    local second_line=$(echo -e "$details" | sed -n '2p')
+    if [ ! -z "$second_line" ]; then
+        printf "│ %-22s │ %-40s │ %-50s │\n" "" "" "$second_line"
+    fi
+}
+
 # Function to print missing keys warning
 print_missing_keys() {
     local missing_keys=()
@@ -94,6 +142,10 @@ print_missing_keys() {
     
     if [ -z "$OPENAI_API_KEY" ]; then
         missing_keys+=("OPENAI_API_KEY")
+    fi
+    
+    if [ -z "$SYNTHETIC_API_KEY" ]; then
+        missing_keys+=("SYNTHETIC_API_KEY")
     fi
     
     if [ ${#missing_keys[@]} -gt 0 ]; then
@@ -120,7 +172,7 @@ show_help() {
     cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Monitor AI service usage across Claude, OpenAI, and more
+Monitor AI service usage across Claude, OpenAI, Synthetic, and more
 
 Options:
   -h, --help       Show this help message and exit
@@ -133,6 +185,7 @@ Examples:
 Environment Variables:
   ANTHROPIC_API_KEY    API key for Claude (Anthropic)
   OPENAI_API_KEY       API key for OpenAI (Codex/Copilot)
+  SYNTHETIC_API_KEY    API key for Synthetic
 
 EOF
 }
@@ -175,6 +228,8 @@ main() {
     check_anthropic
     print_table_separator
     check_openai
+    print_table_separator
+    check_synthetic
     print_table_bottom
     
     # Display configuration status
