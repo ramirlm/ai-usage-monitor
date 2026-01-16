@@ -1,0 +1,4 @@
+#!/bin/bash
+# AI Usage Monitor - Quick run script
+cd "$(dirname "$0")"
+python3 monitor.py "$@"
