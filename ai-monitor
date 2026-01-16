@@ -102,9 +102,9 @@ check_synthetic() {
         if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
             status="${GREEN}✓ Configured${NC}"
             # Try to extract quota info if available
-            if command -v jq &> /dev/null && [ ! -z "$body" ]; then
+            if command -v jq &> /dev/null && [[ -n "$body" ]]; then
                 local quota_info=$(echo "$body" | jq -r 'if .quota then "Quota: \(.quota)" else "Valid key configured" end' 2>/dev/null)
-                if [ ! -z "$quota_info" ]; then
+                if [[ -n "$quota_info" ]]; then
                     details="$quota_info\nAPI: api.synthetic.new/v2/quotas"
                 else
                     details="Valid key configured\nAPI: api.synthetic.new/v2/quotas"
@@ -127,7 +127,7 @@ check_synthetic() {
     printf "│ %-22s │ %-40s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
     # Print second line if available
     local second_line=$(echo -e "$details" | sed -n '2p')
-    if [ ! -z "$second_line" ]; then
+    if [[ -n "$second_line" ]]; then
         printf "│ %-22s │ %-40s │ %-50s │\n" "" "" "$second_line"
     fi
 }
