@@ -1,4 +1,183 @@
 #!/bin/bash
-# AI Usage Monitor - Quick run script
-cd "$(dirname "$0")"
-python3 monitor.py "$@"
+# AI Usage Monitor
+# A CLI tool to monitor usage of various AI services including Claude, OpenAI (Codex/Copilot), and others.
+
+VERSION="1.0.0"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m' # No Color
+
+# Load .env file if it exists
+if [ -f "$(dirname "$0")/.env" ]; then
+    export $(grep -v '^#' "$(dirname "$0")/.env" | xargs)
+fi
+
+# Function to print header
+print_header() {
+    echo ""
+    echo -e "${BOLD}${CYAN}╔══════════════════════════════╗${NC}"
+    echo -e "${BOLD}${CYAN}║    AI Usage Monitor          ║${NC}"
+    echo -e "${BOLD}${CYAN}╚══════════════════════════════╝${NC}"
+    echo -e "${DIM}$(date '+%Y-%m-%d %H:%M:%S')${NC}"
+    echo ""
+}
+
+# Function to print table border
+print_table_border() {
+    echo "╭────────────────────────┬──────────────────┬─────────────────────────────────────────╮"
+}
+
+print_table_separator() {
+    echo "├────────────────────────┼──────────────────┼─────────────────────────────────────────┤"
+}
+
+print_table_bottom() {
+    echo "╰────────────────────────┴──────────────────┴─────────────────────────────────────────╯"
+}
+
+# Function to check Anthropic (Claude) service
+check_anthropic() {
+    local service="Claude (Anthropic)"
+    local status=""
+    local details=""
+    
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        status="${YELLOW}⚠ Not configured${NC}"
+        details="Error: ANTHROPIC_API_KEY not set"
+    else
+        status="${GREEN}✓ Configured${NC}"
+        details="Valid key configured\nCheck usage at console.anthropic.com"
+    fi
+    
+    printf "│ %-22s │ %-28s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
+    if [ ! -z "$ANTHROPIC_API_KEY" ]; then
+        printf "│ %-22s │ %-28s │ %-50s │\n" "" "" "Check usage at console.anthropic.com"
+    fi
+}
+
+# Function to check OpenAI service
+check_openai() {
+    local service="OpenAI (Codex/Copilot)"
+    local status=""
+    local details=""
+    
+    if [ -z "$OPENAI_API_KEY" ]; then
+        status="${YELLOW}⚠ Not configured${NC}"
+        details="Error: OPENAI_API_KEY not set"
+    else
+        status="${GREEN}✓ Configured${NC}"
+        details="Valid key configured\nCheck usage at platform.openai.com/usage"
+    fi
+    
+    printf "│ %-22s │ %-28s │ %-50s │\n" "$service" "$(echo -e "$status")" "$(echo -e "$details" | head -1)"
+    if [ ! -z "$OPENAI_API_KEY" ]; then
+        printf "│ %-22s │ %-28s │ %-50s │\n" "" "" "Check usage at platform.openai.com/usage"
+    fi
+}
+
+# Function to print missing keys warning
+print_missing_keys() {
+    local missing_keys=()
+    
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        missing_keys+=("ANTHROPIC_API_KEY")
+    fi
+    
+    if [ -z "$OPENAI_API_KEY" ]; then
+        missing_keys+=("OPENAI_API_KEY")
+    fi
+    
+    if [ ${#missing_keys[@]} -gt 0 ]; then
+        echo ""
+        echo -e "${YELLOW}╭─────────────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${YELLOW}│                         Configuration                               │${NC}"
+        echo -e "${YELLOW}├─────────────────────────────────────────────────────────────────────┤${NC}"
+        echo -e "${YELLOW}│ ⚠ Missing API Keys:                                                 │${NC}"
+        for key in "${missing_keys[@]}"; do
+            printf "${YELLOW}│   • %-63s │${NC}\n" "$key"
+        done
+        echo -e "${YELLOW}│                                                                     │${NC}"
+        echo -e "${YELLOW}│ ${DIM}Set these in your environment or create a .env file${NC}              ${YELLOW}│${NC}"
+        echo -e "${YELLOW}╰─────────────────────────────────────────────────────────────────────╯${NC}"
+    else
+        echo ""
+        echo -e "${GREEN}✓ All services configured!${NC}"
+    fi
+    echo ""
+}
+
+# Function to display usage/help
+show_help() {
+    cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Monitor AI service usage across Claude, OpenAI, and more
+
+Options:
+  -h, --help       Show this help message and exit
+  -v, --version    Show version information and exit
+
+Examples:
+  $(basename "$0")              # Show current usage status
+  $(basename "$0") --help       # Show this help message
+
+Environment Variables:
+  ANTHROPIC_API_KEY    API key for Claude (Anthropic)
+  OPENAI_API_KEY       API key for OpenAI (Codex/Copilot)
+
+EOF
+}
+
+# Function to show version
+show_version() {
+    echo "$(basename "$0") $VERSION"
+}
+
+# Main function
+main() {
+    # Parse arguments
+    case "${1:-}" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--version)
+            show_version
+            exit 0
+            ;;
+        "")
+            # No arguments, show status
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Try '$(basename "$0") --help' for more information."
+            exit 1
+            ;;
+    esac
+    
+    # Display header
+    print_header
+    
+    # Display table
+    echo -e "${BOLD}${MAGENTA}                    AI Service Status                              ${NC}"
+    print_table_border
+    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-16s${NC} │ ${YELLOW}%-39s${NC} │\n" "Service" "Status" "Details"
+    print_table_separator
+    check_anthropic
+    print_table_separator
+    check_openai
+    print_table_bottom
+    
+    # Display configuration status
+    print_missing_keys
+}
+
+# Run main function
+main "$@"

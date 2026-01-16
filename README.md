@@ -1,14 +1,14 @@
 # AI Usage Monitor
 
-A CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), and more.
+A lightweight bash CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), and more.
 
 ## Features
 
 - 🔍 Monitor multiple AI services from a single CLI
-- 🔑 Load API keys from environment variables
+- 🔑 Load API keys from environment variables or `.env` file
 - 📊 Beautiful terminal output with status indicators
 - ⚡ Quick status check of all configured services
-- 🔧 Easy configuration via `.env` file
+- 🪶 Pure bash - no dependencies required!
 
 ## Supported Services
 
@@ -24,9 +24,9 @@ git clone https://github.com/ramirlm/ai-usage-monitor.git
 cd ai-usage-monitor
 ```
 
-2. Install dependencies:
+2. Make the script executable:
 ```bash
-pip install -r requirements.txt
+chmod +x ai-monitor
 ```
 
 3. Configure your API keys:
@@ -45,17 +45,22 @@ export OPENAI_API_KEY="your-openai-key"
 
 Run the monitor to check the status of all configured AI services:
 
-**Option 1: Using the wrapper script (recommended)**
+**Basic usage:**
 ```bash
 ./ai-monitor
 ```
 
-**Option 2: Direct Python execution**
+**Show help:**
 ```bash
-python monitor.py
+./ai-monitor --help
 ```
 
-**Option 3: Make it globally available**
+**Show version:**
+```bash
+./ai-monitor --version
+```
+
+**Make it globally available:**
 ```bash
 # Add to your PATH or create a symlink
 sudo ln -s $(pwd)/ai-monitor /usr/local/bin/ai-monitor
@@ -66,8 +71,7 @@ ai-monitor
 
 The tool displays a beautiful table showing:
 - Service name
-- Configuration status
-- API key prefix (for verification)
+- Configuration status with color-coded indicators
 - Links to usage dashboards
 
 ## Environment Variables
@@ -81,9 +85,14 @@ The tool displays a beautiful table showing:
 
 To add support for additional AI services:
 
-1. Add a new method in `AIUsageMonitor` class (e.g., `check_service_usage()`)
-2. Add the service check to the `display_usage()` method
+1. Add a new function in the script (e.g., `check_new_service()`)
+2. Call the function in the main display section
 3. Add any required API keys to `.env.example`
+
+## Requirements
+
+- Bash 4.0 or higher
+- No external dependencies!
 
 ## License
 
