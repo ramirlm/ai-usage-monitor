@@ -40,5 +40,3 @@ Thumbs.db
 
 # Usage data
 .usage-data/
-usage-logs.json
-session-logs.json

@@ -66,29 +66,35 @@ print_table_bottom() {
     echo "╰────────────────────────┴────────────────────────────┴─────────────────────────────────────────╯"
 }
 
+# Helper function to append JSON entry to a JSON array file
+append_json_entry() {
+    local file="$1"
+    local new_entry="$2"
+    
+    local content="[]"
+    if [ -f "$file" ]; then
+        content=$(cat "$file")
+    fi
+    
+    if [ "$content" = "[]" ]; then
+        echo "[$new_entry]" > "$file"
+    else
+        # Remove closing bracket, add comma and new entry
+        echo "$content" | sed 's/]$//' > "$file.tmp"
+        echo ",$new_entry]" >> "$file.tmp"
+        mv "$file.tmp" "$file"
+    fi
+}
+
 # Session tracking functions
 start_session() {
     local service="$1"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local session_id=$(date +%s)_$service
     
-    # Read existing sessions
-    local sessions="[]"
-    if [ -f "$SESSION_LOG" ]; then
-        sessions=$(cat "$SESSION_LOG")
-    fi
-    
-    # Add new session (using simple append method for bash compatibility)
+    # Add new session entry
     local new_entry="{\"session_id\":\"$session_id\",\"service\":\"$service\",\"start_time\":\"$timestamp\",\"status\":\"active\"}"
-    
-    if [ "$sessions" = "[]" ]; then
-        echo "[$new_entry]" > "$SESSION_LOG"
-    else
-        # Remove closing bracket, add comma and new entry
-        echo "$sessions" | sed 's/]$//' > "$SESSION_LOG.tmp"
-        echo ",$new_entry]" >> "$SESSION_LOG.tmp"
-        mv "$SESSION_LOG.tmp" "$SESSION_LOG"
-    fi
+    append_json_entry "$SESSION_LOG" "$new_entry"
     
     echo -e "${GREEN}✓ Started session for $service${NC}"
     echo "Session ID: $session_id"
@@ -103,7 +109,9 @@ end_session() {
         return 1
     fi
     
-    # Update session status (simple sed replacement)
+    # Update session status
+    # Note: This sed pattern requires fields in the exact order: session_id, service, start_time, status
+    # If JSON field order changes, this pattern needs to be updated accordingly
     sed -i "s/\"session_id\":\"$session_id\",\"service\":\([^,]*\),\"start_time\":\([^,]*\),\"status\":\"active\"/\"session_id\":\"$session_id\",\"service\":\1,\"start_time\":\2,\"end_time\":\"$timestamp\",\"status\":\"completed\"/g" "$SESSION_LOG"
     
     echo -e "${GREEN}✓ Ended session $session_id${NC}"
@@ -115,22 +123,9 @@ log_usage() {
     local cost="${3:-0}"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     
-    # Read existing usage logs
-    local logs="[]"
-    if [ -f "$USAGE_LOG" ]; then
-        logs=$(cat "$USAGE_LOG")
-    fi
-    
     # Add new usage entry
     local new_entry="{\"service\":\"$service\",\"timestamp\":\"$timestamp\",\"tokens\":$tokens,\"cost\":$cost}"
-    
-    if [ "$logs" = "[]" ]; then
-        echo "[$new_entry]" > "$USAGE_LOG"
-    else
-        echo "$logs" | sed 's/]$//' > "$USAGE_LOG.tmp"
-        echo ",$new_entry]" >> "$USAGE_LOG.tmp"
-        mv "$USAGE_LOG.tmp" "$USAGE_LOG"
-    fi
+    append_json_entry "$USAGE_LOG" "$new_entry"
     
     echo -e "${GREEN}✓ Logged usage for $service: $tokens tokens${NC}"
 }
@@ -430,9 +425,9 @@ main() {
                 echo "Usage: $(basename "$0") log <service> [tokens] [cost]"
                 exit 1
             fi
-            local tokens="${3:-0}"
-            local cost="${4:-0}"
-            log_usage "$2" "$tokens" "$cost"
+            tokens_val="${3:-0}"
+            cost_val="${4:-0}"
+            log_usage "$2" "$tokens_val" "$cost_val"
             ;;
         *)
             echo "Unknown command: $1"
