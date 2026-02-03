@@ -14,12 +14,34 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m' # No Color
 
+# Storage paths
+SCRIPT_DIR="$(dirname "$0")"
+DATA_DIR="$SCRIPT_DIR/.usage-data"
+SESSION_LOG="$DATA_DIR/session-logs.json"
+USAGE_LOG="$DATA_DIR/usage-logs.json"
+
+# Initialize data directory
+init_data_dir() {
+    if [ ! -d "$DATA_DIR" ]; then
+        mkdir -p "$DATA_DIR"
+    fi
+    if [ ! -f "$SESSION_LOG" ]; then
+        echo "[]" > "$SESSION_LOG"
+    fi
+    if [ ! -f "$USAGE_LOG" ]; then
+        echo "[]" > "$USAGE_LOG"
+    fi
+}
+
 # Load .env file if it exists
 if [ -f "$(dirname "$0")/.env" ]; then
     set -a
     source "$(dirname "$0")/.env"
     set +a
 fi
+
+# Initialize data storage
+init_data_dir
 
 # Function to print header
 print_header() {
@@ -42,6 +64,141 @@ print_table_separator() {
 
 print_table_bottom() {
     echo "╰────────────────────────┴────────────────────────────┴─────────────────────────────────────────╯"
+}
+
+# Session tracking functions
+start_session() {
+    local service="$1"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local session_id=$(date +%s)_$service
+    
+    # Read existing sessions
+    local sessions="[]"
+    if [ -f "$SESSION_LOG" ]; then
+        sessions=$(cat "$SESSION_LOG")
+    fi
+    
+    # Add new session (using simple append method for bash compatibility)
+    local new_entry="{\"session_id\":\"$session_id\",\"service\":\"$service\",\"start_time\":\"$timestamp\",\"status\":\"active\"}"
+    
+    if [ "$sessions" = "[]" ]; then
+        echo "[$new_entry]" > "$SESSION_LOG"
+    else
+        # Remove closing bracket, add comma and new entry
+        echo "$sessions" | sed 's/]$//' > "$SESSION_LOG.tmp"
+        echo ",$new_entry]" >> "$SESSION_LOG.tmp"
+        mv "$SESSION_LOG.tmp" "$SESSION_LOG"
+    fi
+    
+    echo -e "${GREEN}✓ Started session for $service${NC}"
+    echo "Session ID: $session_id"
+}
+
+end_session() {
+    local session_id="$1"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    if [ ! -f "$SESSION_LOG" ]; then
+        echo -e "${RED}✗ No active sessions found${NC}"
+        return 1
+    fi
+    
+    # Update session status (simple sed replacement)
+    sed -i "s/\"session_id\":\"$session_id\",\"service\":\([^,]*\),\"start_time\":\([^,]*\),\"status\":\"active\"/\"session_id\":\"$session_id\",\"service\":\1,\"start_time\":\2,\"end_time\":\"$timestamp\",\"status\":\"completed\"/g" "$SESSION_LOG"
+    
+    echo -e "${GREEN}✓ Ended session $session_id${NC}"
+}
+
+log_usage() {
+    local service="$1"
+    local tokens="${2:-0}"
+    local cost="${3:-0}"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    # Read existing usage logs
+    local logs="[]"
+    if [ -f "$USAGE_LOG" ]; then
+        logs=$(cat "$USAGE_LOG")
+    fi
+    
+    # Add new usage entry
+    local new_entry="{\"service\":\"$service\",\"timestamp\":\"$timestamp\",\"tokens\":$tokens,\"cost\":$cost}"
+    
+    if [ "$logs" = "[]" ]; then
+        echo "[$new_entry]" > "$USAGE_LOG"
+    else
+        echo "$logs" | sed 's/]$//' > "$USAGE_LOG.tmp"
+        echo ",$new_entry]" >> "$USAGE_LOG.tmp"
+        mv "$USAGE_LOG.tmp" "$USAGE_LOG"
+    fi
+    
+    echo -e "${GREEN}✓ Logged usage for $service: $tokens tokens${NC}"
+}
+
+# Display tracked sessions
+show_sessions() {
+    echo ""
+    echo -e "${BOLD}${MAGENTA}                    Active Sessions                              ${NC}"
+    
+    if [ ! -f "$SESSION_LOG" ] || [ "$(cat "$SESSION_LOG")" = "[]" ]; then
+        echo -e "${YELLOW}No sessions recorded yet${NC}"
+        return
+    fi
+    
+    echo "╭────────────────────────┬──────────────────────┬──────────────────────┬──────────────╮"
+    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-20s${NC} │ ${YELLOW}%-20s${NC} │ ${MAGENTA}%-12s${NC} │\n" "Session ID" "Service" "Start Time" "Status"
+    echo "├────────────────────────┼──────────────────────┼──────────────────────┼──────────────┤"
+    
+    # Parse and display sessions (simplified for bash)
+    grep -o '"session_id":"[^"]*","service":"[^"]*","start_time":"[^"]*"[^}]*"status":"[^"]*"' "$SESSION_LOG" 2>/dev/null | while read -r line; do
+        session_id=$(echo "$line" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4)
+        service=$(echo "$line" | grep -o '"service":"[^"]*"' | cut -d'"' -f4)
+        start_time=$(echo "$line" | grep -o '"start_time":"[^"]*"' | cut -d'"' -f4 | cut -dT -f1)
+        status=$(echo "$line" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        
+        printf "│ %-22s │ %-20s │ %-20s │ %-12s │\n" "$session_id" "$service" "$start_time" "$status"
+    done
+    
+    echo "╰────────────────────────┴──────────────────────┴──────────────────────┴──────────────╯"
+    echo ""
+}
+
+# Display usage statistics
+show_usage() {
+    echo ""
+    echo -e "${BOLD}${MAGENTA}                    Usage Statistics                              ${NC}"
+    
+    if [ ! -f "$USAGE_LOG" ] || [ "$(cat "$USAGE_LOG")" = "[]" ]; then
+        echo -e "${YELLOW}No usage data recorded yet${NC}"
+        return
+    fi
+    
+    echo "╭────────────────────────┬──────────────────────┬──────────────────────┬──────────────╮"
+    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-20s${NC} │ ${YELLOW}%-20s${NC} │ ${MAGENTA}%-12s${NC} │\n" "Service" "Timestamp" "Tokens" "Cost"
+    echo "├────────────────────────┼──────────────────────┼──────────────────────┼──────────────┤"
+    
+    # Parse and display last 10 usage entries
+    grep -o '"service":"[^"]*","timestamp":"[^"]*","tokens":[^,]*,"cost":[^}]*' "$USAGE_LOG" 2>/dev/null | tail -10 | while read -r line; do
+        service=$(echo "$line" | grep -o '"service":"[^"]*"' | cut -d'"' -f4)
+        timestamp=$(echo "$line" | grep -o '"timestamp":"[^"]*"' | cut -d'"' -f4 | cut -dT -f1)
+        tokens=$(echo "$line" | grep -o '"tokens":[^,]*' | cut -d: -f2)
+        cost=$(echo "$line" | grep -o '"cost":[^}]*' | cut -d: -f2)
+        
+        printf "│ %-22s │ %-20s │ %-20s │ \$%-11s │\n" "$service" "$timestamp" "$tokens" "$cost"
+    done
+    
+    echo "╰────────────────────────┴──────────────────────┴──────────────────────┴──────────────╯"
+    
+    # Calculate totals per service
+    echo ""
+    echo -e "${BOLD}${CYAN}Summary by Service:${NC}"
+    for service in "claude" "openai" "codex"; do
+        local total_tokens=$(grep -o "\"service\":\"$service\"[^}]*\"tokens\":[0-9]*" "$USAGE_LOG" 2>/dev/null | grep -o '"tokens":[0-9]*' | cut -d: -f2 | awk '{sum+=$1} END {print sum+0}')
+        if [ "$total_tokens" -gt 0 ]; then
+            echo -e "  ${service}: ${GREEN}${total_tokens}${NC} tokens"
+        fi
+    done
+    echo ""
 }
 
 # Function to check Anthropic (Claude) service
@@ -170,17 +327,32 @@ print_missing_keys() {
 # Function to display usage/help
 show_help() {
     cat << EOF
-Usage: $(basename "$0") [OPTIONS]
+Usage: $(basename "$0") [COMMAND] [OPTIONS]
 
-Monitor AI service usage across Claude, OpenAI, Synthetic, and more
+Monitor AI service usage across Claude, OpenAI (Codex), and more
+
+Commands:
+  status                Show service configuration status (default)
+  sessions              Show all tracked sessions
+  usage                 Show usage statistics
+  start <service>       Start a new session for a service (claude, openai, codex)
+  end <session_id>      End an active session
+  log <service> [tokens] [cost]  Log usage for a service
 
 Options:
-  -h, --help       Show this help message and exit
-  -v, --version    Show version information and exit
+  -h, --help           Show this help message and exit
+  -v, --version        Show version information and exit
 
 Examples:
-  $(basename "$0")              # Show current usage status
-  $(basename "$0") --help       # Show this help message
+  $(basename "$0")                          # Show service status
+  $(basename "$0") status                   # Show service status
+  $(basename "$0") sessions                 # Show all tracked sessions
+  $(basename "$0") usage                    # Show usage statistics
+  $(basename "$0") start claude             # Start a Claude session
+  $(basename "$0") start openai             # Start an OpenAI session
+  $(basename "$0") start codex              # Start a Codex session
+  $(basename "$0") end 1234567890_claude    # End a specific session
+  $(basename "$0") log claude 1500 0.02     # Log usage: 1500 tokens, \$0.02
 
 Environment Variables:
   ANTHROPIC_API_KEY    API key for Claude (Anthropic)
@@ -207,33 +379,67 @@ main() {
             show_version
             exit 0
             ;;
-        "")
-            # No arguments, show status
+        status|"")
+            # Show status (default command)
+            print_header
+            echo -e "${BOLD}${MAGENTA}                    AI Service Status                              ${NC}"
+            print_table_border
+            printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-26s${NC} │ ${YELLOW}%-39s${NC} │\n" "Service" "Status" "Details"
+            print_table_separator
+            check_anthropic
+            print_table_separator
+            check_openai
+            print_table_separator
+            check_synthetic
+            print_table_bottom
+            print_missing_keys
+            ;;
+        sessions)
+            # Show tracked sessions
+            print_header
+            show_sessions
+            ;;
+        usage)
+            # Show usage statistics
+            print_header
+            show_usage
+            ;;
+        start)
+            # Start a new session
+            if [ -z "$2" ]; then
+                echo -e "${RED}✗ Error: Service name required${NC}"
+                echo "Usage: $(basename "$0") start <service>"
+                echo "Services: claude, openai, codex"
+                exit 1
+            fi
+            start_session "$2"
+            ;;
+        end)
+            # End a session
+            if [ -z "$2" ]; then
+                echo -e "${RED}✗ Error: Session ID required${NC}"
+                echo "Usage: $(basename "$0") end <session_id>"
+                exit 1
+            fi
+            end_session "$2"
+            ;;
+        log)
+            # Log usage
+            if [ -z "$2" ]; then
+                echo -e "${RED}✗ Error: Service name required${NC}"
+                echo "Usage: $(basename "$0") log <service> [tokens] [cost]"
+                exit 1
+            fi
+            local tokens="${3:-0}"
+            local cost="${4:-0}"
+            log_usage "$2" "$tokens" "$cost"
             ;;
         *)
-            echo "Unknown option: $1"
+            echo "Unknown command: $1"
             echo "Try '$(basename "$0") --help' for more information."
             exit 1
             ;;
     esac
-    
-    # Display header
-    print_header
-    
-    # Display table
-    echo -e "${BOLD}${MAGENTA}                    AI Service Status                              ${NC}"
-    print_table_border
-    printf "│ ${CYAN}%-22s${NC} │ ${GREEN}%-26s${NC} │ ${YELLOW}%-39s${NC} │\n" "Service" "Status" "Details"
-    print_table_separator
-    check_anthropic
-    print_table_separator
-    check_openai
-    print_table_separator
-    check_synthetic
-    print_table_bottom
-    
-    # Display configuration status
-    print_missing_keys
 }
 
 # Run main function

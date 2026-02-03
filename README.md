@@ -1,20 +1,23 @@
 # AI Usage Monitor
 
-A lightweight bash CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), Synthetic, and more.
+A lightweight bash CLI tool to monitor usage of various AI services including Claude (Anthropic), OpenAI (Codex/Copilot), Synthetic, and more. Track sessions and usage statistics across all your AI services.
 
 ## Features
 
 - 🔍 Monitor multiple AI services from a single CLI
+- 📊 Track sessions and usage statistics for Claude, OpenAI Codex, and more
+- 💾 Persistent storage of session and usage data
 - 🔑 Load API keys from environment variables or `.env` file
-- 📊 Beautiful terminal output with status indicators
+- 📈 Beautiful terminal output with status indicators
 - ⚡ Quick status check of all configured services
 - 🪶 Pure bash - no dependencies required!
 - 🌐 Real-time API quota checking for Synthetic
 
 ## Supported Services
 
-- **Claude (Anthropic)** - Advanced AI assistant
-- **OpenAI** - Codex, Copilot, and GPT models
+- **Claude (Anthropic)** - Advanced AI assistant with session and usage tracking
+- **OpenAI Codex** - Code generation and completion with usage tracking
+- **OpenAI** - GPT models and Copilot with usage tracking
 - **Synthetic** - AI service with real-time quota monitoring via API
 - More services can be added easily!
 
@@ -46,12 +49,57 @@ export SYNTHETIC_API_KEY="your-synthetic-key"
 
 ## Usage
 
-Run the monitor to check the status of all configured AI services:
+The tool now supports multiple commands for tracking sessions and usage:
 
-**Basic usage:**
+### Check Service Status
+
+Check the configuration status of all AI services:
+
 ```bash
 ./ai-monitor
+# or
+./ai-monitor status
 ```
+
+### Track Sessions
+
+Start a new session for a service:
+
+```bash
+./ai-monitor start claude
+./ai-monitor start openai
+./ai-monitor start codex
+```
+
+End an active session:
+
+```bash
+./ai-monitor end <session_id>
+```
+
+View all tracked sessions:
+
+```bash
+./ai-monitor sessions
+```
+
+### Track Usage
+
+Log usage for a service:
+
+```bash
+./ai-monitor log claude 1500 0.02    # 1500 tokens, $0.02 cost
+./ai-monitor log openai 2000 0.04    # 2000 tokens, $0.04 cost
+./ai-monitor log codex 500 0.01      # 500 tokens, $0.01 cost
+```
+
+View usage statistics:
+
+```bash
+./ai-monitor usage
+```
+
+### Other Commands
 
 **Show help:**
 ```bash
@@ -72,9 +120,10 @@ ai-monitor
 
 ### Output Example
 
-The tool displays a beautiful table showing:
-- Service name
-- Configuration status with color-coded indicators
+The tool displays beautiful tables showing:
+- Service configuration status with color-coded indicators
+- Active and completed sessions with timestamps
+- Usage statistics with token counts and costs
 - Links to usage dashboards
 
 ## Environment Variables
