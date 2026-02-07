@@ -216,4 +216,6 @@ if __name__ == '__main__':
     
     # Start server
     print("Starting Flask server on http://localhost:3000")
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    # Note: debug=False for security. Set DEBUG=1 environment variable for development
+    debug_mode = os.environ.get('DEBUG', '0') == '1'
+    app.run(host='0.0.0.0', port=3000, debug=debug_mode)
