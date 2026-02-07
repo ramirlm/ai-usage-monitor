@@ -4,6 +4,7 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
+import calendar
 import os
 import sys
 
@@ -47,7 +48,7 @@ def get_dashboard():
         
         # Calculate projection (simple linear projection based on days elapsed)
         day_of_month = now.day
-        days_in_month = 30  # Simplified
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
         projected_cost = (monthly_cost / day_of_month) * days_in_month if day_of_month > 0 else 0
         
         # Get recent alerts

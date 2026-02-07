@@ -12,6 +12,7 @@ import argparse
 import sys
 import os
 from datetime import datetime
+import calendar
 import json
 
 # Add app directory to path
@@ -81,7 +82,7 @@ def cmd_budget_status(args):
         
         # Project monthly cost
         day_of_month = now.day
-        days_in_month = 30
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
         projected = (monthly_cost / day_of_month * days_in_month) if day_of_month > 0 else 0
         
         print(f"\n  Global Budget:      ${budget_amount:.2f}")

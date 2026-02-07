@@ -356,7 +356,12 @@
             const budgetProgress = document.getElementById('budget-progress');
             const budgetUsedPercent = Math.min(data.budget_used, 100);
             budgetProgress.style.width = budgetUsedPercent + '%';
-            budgetProgress.textContent = formatPercentage(budgetUsedPercent);
+            
+            // Update progress text in the span element
+            const progressTextSpan = budgetProgress.querySelector('span');
+            if (progressTextSpan) {
+                progressTextSpan.textContent = formatPercentage(budgetUsedPercent);
+            }
             
             // Update progress bar color
             budgetProgress.className = 'progress-fill';

@@ -2,7 +2,8 @@
 
 from typing import Optional
 from datetime import datetime
-from database import Database
+import calendar
+from app.database import Database
 
 
 class AlertManager:
@@ -74,7 +75,7 @@ class AlertManager:
         
         # Project monthly cost
         day_of_month = now.day
-        days_in_month = 30  # Simplified
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
         
         if day_of_month > 0:
             projected_cost = (current_cost / day_of_month) * days_in_month
