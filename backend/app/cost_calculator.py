@@ -41,6 +41,68 @@ class CostCalculator:
                 'input': 1.00,
                 'output': 2.00
             }
+        },
+        'cursor': {
+            'default': {
+                'input': 0.00,  # Subscription-based, not token-based
+                'output': 0.00
+            }
+        },
+        'copilot': {
+            'default': {
+                'input': 0.00,  # Subscription-based, not token-based
+                'output': 0.00
+            }
+        }
+    }
+    
+    # Subscription limits (monthly) - None means unlimited or not applicable
+    # For services with usage limits, this tracks completions/requests rather than tokens
+    SUBSCRIPTION_LIMITS = {
+        'cursor': {
+            'pro': {
+                'monthly_cost': 20.00,
+                'monthly_requests': 500,  # Premium requests per month
+                'description': 'Cursor Pro Plan'
+            },
+            'business': {
+                'monthly_cost': 40.00,
+                'monthly_requests': None,  # Unlimited
+                'description': 'Cursor Business Plan'
+            }
+        },
+        'copilot': {
+            'individual': {
+                'monthly_cost': 10.00,
+                'monthly_requests': None,  # Unlimited suggestions
+                'description': 'GitHub Copilot Individual'
+            },
+            'business': {
+                'monthly_cost': 19.00,
+                'monthly_requests': None,  # Unlimited suggestions
+                'description': 'GitHub Copilot Business'
+            }
+        },
+        'anthropic': {
+            'api': {
+                'monthly_cost': None,  # Pay-as-you-go
+                'monthly_requests': None,
+                'description': 'Claude API (Pay-as-you-go)'
+            }
+        },
+        'openai': {
+            'api': {
+                'monthly_cost': None,  # Pay-as-you-go
+                'monthly_requests': None,
+                'description': 'OpenAI API (Pay-as-you-go)'
+            }
+        },
+        'synthetic': {
+            'api': {
+                'monthly_cost': None,  # Pay-as-you-go
+                'monthly_requests': None,
+                'description': 'Synthetic API (Pay-as-you-go)'
+            }
         }
     }
     
@@ -97,3 +159,51 @@ class CostCalculator:
             return cls.PRICING[service][model]
         
         return None
+    
+    @classmethod
+    def get_subscription_info(cls, service: str, plan: str = None) -> Optional[Dict]:
+        """Get subscription information for a service.
+        
+        Args:
+            service: Service name
+            plan: Optional plan name (e.g., 'pro', 'business')
+            
+        Returns:
+            Dict with subscription info or None
+        """
+        service = service.lower()
+        
+        if service not in cls.SUBSCRIPTION_LIMITS:
+            return None
+        
+        service_plans = cls.SUBSCRIPTION_LIMITS[service]
+        
+        if plan and plan in service_plans:
+            return service_plans[plan]
+        elif not plan and service_plans:
+            # Return first available plan as default
+            return next(iter(service_plans.values()))
+        
+        return None
+    
+    @classmethod
+    def is_subscription_based(cls, service: str) -> bool:
+        """Check if a service is subscription-based.
+        
+        Args:
+            service: Service name
+            
+        Returns:
+            True if subscription-based, False otherwise
+        """
+        service = service.lower()
+        if service not in cls.SUBSCRIPTION_LIMITS:
+            return False
+        
+        # Check if service has a fixed monthly cost
+        plans = cls.SUBSCRIPTION_LIMITS[service]
+        for plan_info in plans.values():
+            if plan_info.get('monthly_cost') is not None:
+                return True
+        
+        return False

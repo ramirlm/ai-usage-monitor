@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import Database
 from app.cost_calculator import CostCalculator
 from app.alert_manager import AlertManager
+from app.usage_monitor import UsageMonitor
 
 app = Flask(__name__, static_folder='../../frontend/public')
 CORS(app)  # Enable CORS for frontend
@@ -54,6 +55,10 @@ def get_dashboard():
         # Get recent alerts
         alerts = db.get_recent_alerts(limit=5, unacknowledged_only=True)
         
+        # Get usage health for all services
+        usage_monitor = UsageMonitor(db)
+        health_data = usage_monitor.get_all_services_health()
+        
         db.close()
         
         return jsonify({
@@ -64,6 +69,8 @@ def get_dashboard():
             'over_budget': projected_cost > budget_amount,
             'service_breakdown': service_breakdown,
             'alerts': alerts,
+            'month_info': health_data['month_info'],
+            'services_health': health_data['services'],
             'last_updated': datetime.now().isoformat()
         })
     except Exception as e:
@@ -191,6 +198,82 @@ def add_usage():
         db.close()
         
         return jsonify({'message': 'Usage added', 'id': snapshot_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subscription', methods=['GET'])
+def get_subscription():
+    """Get subscription settings for a service."""
+    try:
+        service = request.args.get('service')
+        if not service:
+            return jsonify({'error': 'Service parameter required'}), 400
+        
+        db = get_db()
+        subscription = db.get_subscription(service)
+        db.close()
+        
+        if subscription:
+            return jsonify(subscription)
+        else:
+            return jsonify({'message': 'No subscription configured'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subscription', methods=['POST'])
+def set_subscription():
+    """Set subscription settings for a service."""
+    try:
+        data = request.json
+        service = data.get('service')
+        plan = data.get('plan')
+        monthly_cost = data.get('monthly_cost')
+        monthly_limit = data.get('monthly_limit')
+        limit_type = data.get('limit_type', 'requests')
+        
+        if not service or not plan:
+            return jsonify({'error': 'Service and plan are required'}), 400
+        
+        db = get_db()
+        db.set_subscription(service, plan, monthly_cost, monthly_limit, limit_type)
+        db.close()
+        
+        return jsonify({'message': 'Subscription set successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/usage/health', methods=['GET'])
+def get_usage_health():
+    """Get usage health status for all services."""
+    try:
+        db = get_db()
+        usage_monitor = UsageMonitor(db)
+        health_data = usage_monitor.get_all_services_health()
+        db.close()
+        
+        return jsonify(health_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/usage/health/<service>', methods=['GET'])
+def get_service_health(service):
+    """Get usage health status for a specific service."""
+    try:
+        db = get_db()
+        usage_monitor = UsageMonitor(db)
+        now = datetime.now()
+        health = usage_monitor.calculate_usage_health(service, now.year, now.month)
+        db.close()
+        
+        return jsonify({
+            'service': service,
+            'health': health,
+            'month_info': usage_monitor.get_month_progress()
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
