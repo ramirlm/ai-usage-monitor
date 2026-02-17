@@ -171,7 +171,8 @@ class UsageMonitor:
         """Determine health status based on usage vs time.
         
         Logic:
-        - Good: Usage is at or below time progress (e.g., 50% used at 50% time)
+        - Good: Usage is up to 10% ahead of time progress (e.g., 60% used at 50% time is still good)
+               Being behind schedule is also considered good
         - Warning: Usage is 10-25% ahead of time progress
         - Danger: Usage is more than 25% ahead of time progress
         
@@ -184,6 +185,8 @@ class UsageMonitor:
         """
         difference = usage_percentage - time_percentage
         
+        # Being at or behind schedule is always good
+        # Being up to 10% ahead is also acceptable
         if difference <= 10:
             return 'good'
         elif difference <= 25:

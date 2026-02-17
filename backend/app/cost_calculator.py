@@ -57,7 +57,7 @@ class CostCalculator:
     }
     
     # Subscription limits (monthly) - None means unlimited or not applicable
-    # For services with usage limits, this tracks completions/requests rather than tokens
+    # For services with usage limits, this tracks API requests/interactions rather than tokens
     SUBSCRIPTION_LIMITS = {
         'cursor': {
             'pro': {
