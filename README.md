@@ -23,8 +23,10 @@ A comprehensive CLI tool and web dashboard to monitor usage and costs of various
 
 ## Supported Services
 
-- **Claude (Anthropic)** - Advanced AI assistant
-- **OpenAI** - Codex, Copilot, and GPT models
+- **Claude (Anthropic)** - Advanced AI assistant (Pay-as-you-go)
+- **OpenAI** - GPT models and API (Pay-as-you-go)
+- **Cursor AI** - AI-powered code editor (Subscription-based)
+- **GitHub Copilot** - AI pair programmer (Subscription-based)
 - **Synthetic** - AI service with real-time quota monitoring via API
 - More services can be added easily!
 
@@ -111,6 +113,26 @@ python3 cli.py budget set 80 --service openai
 python3 cli.py budget status
 ```
 
+#### Subscription Management
+
+For subscription-based services like Cursor AI and GitHub Copilot, you can configure subscription settings:
+
+```bash
+# Configure Cursor AI Pro subscription
+# POST to /api/subscription
+curl -X POST http://localhost:3000/api/subscription \
+  -H "Content-Type: application/json" \
+  -d '{"service": "cursor", "plan": "pro", "monthly_cost": 20.0, "monthly_limit": 500, "limit_type": "requests"}'
+
+# Configure GitHub Copilot Individual (unlimited)
+curl -X POST http://localhost:3000/api/subscription \
+  -H "Content-Type: application/json" \
+  -d '{"service": "copilot", "plan": "individual", "monthly_cost": 10.0, "monthly_limit": null, "limit_type": "requests"}'
+
+# Get subscription info for a service
+curl http://localhost:3000/api/subscription?service=cursor
+```
+
 #### Generate Reports
 ```bash
 # Generate report for current month
@@ -134,10 +156,30 @@ The web dashboard provides a comprehensive overview of your AI usage and costs:
 
 **Features:**
 - 💰 Real-time cost tracking
-- 📊 Budget progress visualization
+- 📊 Budget progress visualization with time-based comparison
 - 🎯 Cost projections with overage warnings
 - 📈 Service breakdown with percentages
 - ⚡ Auto-refresh every 5 minutes
+- 🚦 **Usage Health Status** - "Danger Zone" detection based on time vs. usage
+- 📅 Month progress indicator showing days elapsed
+- 🔔 Visual health badges (Good Shape ✓, Warning Zone ⚠️, Danger Zone 🚨)
+
+**Understanding Health Status:**
+
+The dashboard uses a time-based comparison system to help you monitor if your usage is on track:
+
+- **Good Shape ✓**: Your usage is at or below the expected level based on time through the month
+  - Example: 50% of budget used at 50% through the month = Good!
+  
+- **Warning Zone ⚠️**: Usage is 10-25% ahead of schedule
+  - Example: 70% of budget used at 50% through the month = Warning
+  
+- **Danger Zone 🚨**: Usage is more than 25% ahead of schedule
+  - Example: 80% of budget used at 50% through the month = Danger!
+  
+- **Unlimited**: For subscription services with no usage limits (like GitHub Copilot Individual)
+
+This helps you understand if you're in a "danger zone" where you might run out of budget before the month ends, or if you're in "good shape" and pacing appropriately.
 
 **Access:** http://localhost:3000 (when dashboard server is running)
 
@@ -162,11 +204,15 @@ The web dashboard provides a comprehensive overview of your AI usage and costs:
 
 The dashboard provides several API endpoints:
 
-- `GET /api/dashboard` - Dashboard overview data
+- `GET /api/dashboard` - Dashboard overview data with health status
 - `GET /api/costs/daily?days=30` - Daily cost data
 - `GET /api/costs/service/<service>` - Service-specific costs
 - `GET /api/budget` - Get budget settings
 - `POST /api/budget` - Set budget settings
+- `GET /api/subscription?service=<service>` - Get subscription settings
+- `POST /api/subscription` - Set subscription settings
+- `GET /api/usage/health` - Get usage health status for all services
+- `GET /api/usage/health/<service>` - Get health status for specific service
 - `GET /api/alerts` - Get recent alerts
 - `POST /api/alerts/<id>/acknowledge` - Acknowledge alert
 - `POST /api/usage/add` - Add usage data manually
@@ -184,6 +230,9 @@ Alert history with type, severity, message, and acknowledgment status.
 
 ### budget_settings
 Budget configurations for global and service-specific budgets.
+
+### subscription_settings
+Subscription plan configurations with monthly costs and usage limits for services like Cursor AI and GitHub Copilot.
 
 ## Development
 
