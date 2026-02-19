@@ -242,6 +242,54 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
+        
+        .health-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .health-good {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .health-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .health-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .health-unknown {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .time-indicator {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .service-health {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -276,6 +324,17 @@
                             <div class="stat-label">⚠️ Projected Cost</div>
                             <div class="stat-value" id="projected-cost">$0.00</div>
                             <div class="stat-detail" id="projection-status">On track</div>
+                        </div>
+                    </div>
+                    
+                    <div class="time-indicator">
+                        <div>
+                            <div style="font-size: 0.9em; opacity: 0.8;">📅 Month Progress</div>
+                            <div style="font-size: 1.2em; font-weight: bold; margin-top: 5px;" id="month-progress">Day 0 of 0</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.9em; opacity: 0.8;">Time Through Month</div>
+                            <div style="font-size: 1.2em; font-weight: bold; margin-top: 5px;" id="time-progress">0%</div>
                         </div>
                     </div>
                     
@@ -352,6 +411,14 @@
             document.getElementById('projection-status').textContent = 
                 data.over_budget ? '⚠️ Over budget!' : '✓ On track';
             
+            // Update month progress if available
+            if (data.month_info) {
+                document.getElementById('month-progress').textContent = 
+                    `Day ${data.month_info.current_day} of ${data.month_info.total_days}`;
+                document.getElementById('time-progress').textContent = 
+                    formatPercentage(data.month_info.progress_percentage);
+            }
+            
             // Update progress bar
             const budgetProgress = document.getElementById('budget-progress');
             const budgetUsedPercent = Math.min(data.budget_used, 100);
@@ -384,7 +451,7 @@
                 alertContainer.innerHTML = '';
             }
             
-            // Update service breakdown
+            // Update service breakdown with health status
             const servicesList = document.getElementById('services-list');
             servicesList.innerHTML = '';
             
@@ -394,14 +461,32 @@
                         ? (service.total_cost / data.monthly_cost * 100) 
                         : 0;
                     
+                    // Get health info for this service
+                    const health = data.services_health && data.services_health[service.service] 
+                        ? data.services_health[service.service] 
+                        : null;
+                    
                     const serviceDiv = document.createElement('div');
                     serviceDiv.className = 'service-item';
+                    
+                    let healthHTML = '';
+                    if (health) {
+                        const healthClass = `health-${health.status}`;
+                        healthHTML = `
+                            <div class="service-health">
+                                <span class="health-badge ${healthClass}">${health.status_label}</span>
+                                <span>${health.message}</span>
+                            </div>
+                        `;
+                    }
+                    
                     serviceDiv.innerHTML = `
-                        <div>
+                        <div style="flex: 1;">
                             <div class="service-name">${service.service}</div>
                             <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
                                 ${service.total_tokens.toLocaleString()} tokens
                             </div>
+                            ${healthHTML}
                         </div>
                         <div style="text-align: right;">
                             <span class="service-cost">${formatCurrency(service.total_cost)}</span>

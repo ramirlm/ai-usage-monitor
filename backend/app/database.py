@@ -101,6 +101,21 @@ class Database:
             )
         ''')
         
+        # Subscription settings table - stores subscription plan information
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS subscription_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service TEXT NOT NULL,
+                plan TEXT NOT NULL,
+                monthly_cost REAL,
+                monthly_limit INTEGER,
+                limit_type TEXT,
+                start_date DATE,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(service)
+            )
+        ''')
+        
         # Create indexes for better query performance
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_snapshots_timestamp 
@@ -387,6 +402,84 @@ class Database:
         ''', (days,))
         
         return [dict(row) for row in cursor.fetchall()]
+    
+    def set_subscription(self, service: str, plan: str, monthly_cost: float = None,
+                        monthly_limit: int = None, limit_type: str = None):
+        """Set subscription settings for a service.
+        
+        Args:
+            service: Service name
+            plan: Plan name (e.g., 'pro', 'business')
+            monthly_cost: Monthly subscription cost
+            monthly_limit: Monthly usage limit (if applicable)
+            limit_type: Type of limit ('requests', 'tokens', etc.)
+        """
+        cursor = self.conn.cursor()
+        updated_at = datetime.now().isoformat()
+        start_date = datetime.now().strftime('%Y-%m-%d')
+        
+        cursor.execute('''
+            INSERT INTO subscription_settings 
+            (service, plan, monthly_cost, monthly_limit, limit_type, start_date, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(service) DO UPDATE SET
+                plan = excluded.plan,
+                monthly_cost = excluded.monthly_cost,
+                monthly_limit = excluded.monthly_limit,
+                limit_type = excluded.limit_type,
+                updated_at = excluded.updated_at
+        ''', (service, plan, monthly_cost, monthly_limit, limit_type, start_date, updated_at))
+        
+        self.conn.commit()
+    
+    def get_subscription(self, service: str) -> Optional[Dict]:
+        """Get subscription settings for a service.
+        
+        Args:
+            service: Service name
+            
+        Returns:
+            Subscription settings dict or None
+        """
+        cursor = self.conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM subscription_settings WHERE service = ?
+        ''', (service,))
+        
+        result = cursor.fetchone()
+        return dict(result) if result else None
+    
+    def get_monthly_usage_count(self, year: int, month: int, service: str) -> int:
+        """Get usage count (requests/interactions) for a service in a month.
+        
+        For subscription services, this counts the number of usage snapshots
+        rather than tokens, representing requests or interactions.
+        
+        Args:
+            year: Year
+            month: Month (1-12)
+            service: Service name
+            
+        Returns:
+            Number of usage records
+        """
+        cursor = self.conn.cursor()
+        date_start = f"{year}-{month:02d}-01"
+        
+        if month == 12:
+            date_end = f"{year + 1}-01-01"
+        else:
+            date_end = f"{year}-{month + 1:02d}-01"
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count
+            FROM usage_snapshots
+            WHERE timestamp >= ? AND timestamp < ? AND service = ?
+        ''', (date_start, date_end, service))
+        
+        result = cursor.fetchone()
+        return result['count'] if result else 0
 
 
 if __name__ == '__main__':
